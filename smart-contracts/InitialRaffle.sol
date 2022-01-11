@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+import "./IOpenHeadToken.sol";
 import '@chainlink/contracts/src/v0.8/VRFConsumerBase.sol';
 
 contract InitialRaffle is Ownable, VRFConsumerBase {
@@ -10,7 +10,7 @@ contract InitialRaffle is Ownable, VRFConsumerBase {
     bytes32 immutable private keyHash;
     uint256 immutable private fee;
 
-    IERC721Enumerable public tokenAPI;
+    IOpenHeadToken public tokenAPI;
     uint public endsOn;
     uint public nextStepOn;
     uint public fallbackDate;
@@ -24,7 +24,7 @@ contract InitialRaffle is Ownable, VRFConsumerBase {
         fee = _fee;
     }
 
-    function setTokenAddr(IERC721Enumerable _tokenAddr) external onlyOwner {
+    function setTokenAddr(IOpenHeadToken _tokenAddr) external onlyOwner {
         require(address(tokenAPI) == address(0), "Token address is already set");
         tokenAPI = _tokenAddr;
     }
@@ -32,7 +32,7 @@ contract InitialRaffle is Ownable, VRFConsumerBase {
     function initiateRaffle() public {
         require(address(tokenAPI) != address(0), "Token address must be set");
         require(endsOn == 0, "Raffle already initiated");
-        require(tokenAPI.totalSupply() == 10000 || block.timestamp >= fallbackDate, "Cant initiate raffle yet");
+        require(tokenAPI.allPublicMinted() || block.timestamp >= fallbackDate, "Cant initiate raffle yet");
 
         endsOn = block.timestamp + (block.timestamp > fallbackDate ? 0 : 7 days);
     }

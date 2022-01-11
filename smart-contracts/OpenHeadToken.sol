@@ -11,6 +11,7 @@ contract OpenHeadToken is ERC721Enumerable, Ownable {
   uint256 public constant GIFT_TOKENS = 250;
   uint256 public constant MAX_TOKENS = 10000;
   uint256 public constant PRICE = 0.07 ether;
+  uint256 public constant TO_RAFFLE = 10256410256410256 wei;
   uint256 public constant MAX_PER_MINT = 5;
   uint256 public constant PRESALE_LIMIT = 2;
 
@@ -35,6 +36,10 @@ contract OpenHeadToken is ERC721Enumerable, Ownable {
     initialRaffle = payable(_initialRaffle);
     tokenBaseURI = _tokenBaseURI;
     provenance = _provenance;
+  }
+
+  function allPublicMinted() view public returns (bool) {
+    return publicAmount == PUBLIC_TOKENS;
   }
 
   function addToWhitelist(address[] calldata entries) external onlyOwner {
@@ -102,15 +107,16 @@ contract OpenHeadToken is ERC721Enumerable, Ownable {
     require(amount > 0 && amount <= MAX_PER_MINT, "Invalid amount");
     require(PRICE * amount <= msg.value, "Insufficient ETH");
 
-    initialRaffle.transfer(0.01 ether);
-    teamAddr.transfer(msg.value - 0.01 ether);
+    uint toTransfer = TO_RAFFLE * amount;
+    initialRaffle.transfer(toTransfer);
+    teamAddr.transfer(msg.value - toTransfer);
 
     for(uint i = 0; i < amount; i++) {
       publicAmount++;
       _safeMint(msg.sender, totalSupply() + 1);
     }
 
-    if (startingIndexBlock == 0 && (publicAmount == PUBLIC_TOKENS || revealed)) {
+    if (startingIndexBlock == 0 && (allPublicMinted() || revealed)) {
       startingIndexBlock = block.number;
     }
   }
@@ -124,8 +130,9 @@ contract OpenHeadToken is ERC721Enumerable, Ownable {
     require(presalePurchases[msg.sender] + amount <= PRESALE_LIMIT, "Exceeded presale limit");
     require(PRICE * amount <= msg.value, "Insufficient ETH");
 
-    initialRaffle.transfer(0.01 ether);
-    teamAddr.transfer(msg.value - 0.01 ether);
+    uint toTransfer = TO_RAFFLE * amount;
+    initialRaffle.transfer(toTransfer);
+    teamAddr.transfer(msg.value - toTransfer);
 
     for(uint i = 0; i < amount; i++) {
       publicAmount++;
