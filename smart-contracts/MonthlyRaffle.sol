@@ -111,7 +111,7 @@ contract MonthlyRaffle is VRFConsumerBase {
             uint16 idx = uint16(randomness % total) + 1;
             bool op = (randomness % 2) == 1;
 
-            while(excluded[idx] || tokenAPI.ownerOf(idx) == address(0)) {
+            while(excluded[idx]) {
                 if (op) idx = (idx % total) + 1;
                 else idx = idx == 1 ? total : idx - 1;
             }

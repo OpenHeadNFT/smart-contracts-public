@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 
@@ -19,10 +20,10 @@ contract OpenHeadToken is ERC721Enumerable, Ownable {
   address payable public immutable initialRaffle;
   string public provenance;
   string public tokenBaseURI;
+  bytes32 public merkleRoot;
 
   bool public saleLive;
   bool public presaleLive;
-  mapping(address => bool) public whitelist;
   mapping(address => uint256) public presalePurchases;
 
   bool public revealed;
@@ -31,34 +32,22 @@ contract OpenHeadToken is ERC721Enumerable, Ownable {
   uint256 public giftedAmount;
   uint256 public publicAmount;
 
-  constructor(address _teamAddr, address _initialRaffle, string memory _tokenBaseURI, string memory _provenance) ERC721("Open Head NFT", "OH") {
+
+  constructor(address _teamAddr, address _initialRaffle, string memory _tokenBaseURI, string memory _provenance, bytes32 _merkleRoot) ERC721("Open Head NFT", "OH") {
     teamAddr = payable(_teamAddr);
     initialRaffle = payable(_initialRaffle);
     tokenBaseURI = _tokenBaseURI;
     provenance = _provenance;
+    merkleRoot = _merkleRoot;
   }
 
   function allPublicMinted() view public returns (bool) {
     return publicAmount == PUBLIC_TOKENS;
   }
 
-  function addToWhitelist(address[] calldata entries) external onlyOwner {
-    for(uint256 i = 0; i < entries.length; i++) {
-      address entry = entries[i];
-      require(entry != address(0), "Invalid address");
-      require(!whitelist[entry], "Already whitelisted");
-
-      whitelist[entry] = true;
-    }
-  }
-
-  function removeFromWhitelist(address[] calldata entries) external onlyOwner {
-    for(uint256 i = 0; i < entries.length; i++) {
-      address entry = entries[i];
-      require(entry != address(0), "Invalid address");
-
-      whitelist[entry] = false;
-    }
+  function isWhitelisted(address account, bytes32[] calldata merkleProof) public view returns(bool) {
+    bytes32 node = keccak256(abi.encodePacked(account));
+    return MerkleProof.verify(merkleProof, merkleRoot, node);
   }
 
   function togglePresaleStatus() external onlyOwner {
@@ -69,10 +58,16 @@ contract OpenHeadToken is ERC721Enumerable, Ownable {
     saleLive = !saleLive;
   }
 
-  function reveal(string calldata URI) external onlyOwner {
-    require(!revealed, "Already revealed!");
-
+  function setTokenBaseURI(string calldata URI) external onlyOwner {
     tokenBaseURI = URI;
+  }
+
+  function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+    merkleRoot = _merkleRoot;
+  }
+
+  function reveal() external onlyOwner {
+    require(!revealed, "Already revealed!");
     revealed = true;
   }
 
@@ -121,9 +116,9 @@ contract OpenHeadToken is ERC721Enumerable, Ownable {
     }
   }
 
-  function mintPresaleHeads(uint amount) external payable {
+  function mintPresaleHeads(uint amount, bytes32[] calldata proof) external payable {
     require(presaleLive, "Presale is not active");
-    require(whitelist[msg.sender], "Not in the whitelist");
+    require(isWhitelisted(msg.sender, proof) == true, "Not in the whitelist");
     require(totalSupply() < MAX_TOKENS, "Sold out");
     require(publicAmount + amount <= PUBLIC_TOKENS, "All public tokens sold out");
     require(amount > 0 && amount <= PRESALE_LIMIT, "Invalid amount");

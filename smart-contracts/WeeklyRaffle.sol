@@ -84,12 +84,6 @@ contract WeeklyRaffle is VRFConsumerBase {
         } else if (state == RaffleState.CALCULATING_WINNER) {
             uint16 total = uint16(tokenAPI.totalSupply());
             uint16 idx = uint16(randomness % total) + 1;
-            bool op = (randomness % 2) == 1;
-
-            while(tokenAPI.ownerOf(idx) == address(0)) {
-                if (op) idx = (idx % total) + 1;
-                else idx = idx == 1 ? total : idx - 1;
-            }
 
             state = RaffleState.CLOSED;
             winner = payable(tokenAPI.ownerOf(idx));
